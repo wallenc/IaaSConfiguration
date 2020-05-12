@@ -13,8 +13,11 @@
     .PARAMETER azureEnvironment
         The Azure Cloud environment to use, i.e. AzureCloud, AzureUSGovernment
 
-    .PARAMETER azureStorageAccounts
-        List of one or more storage accounts to set secure transfered required
+    .PARAMETER AzureSqlServerNames
+        List of one or more Azure SQL Servers for which to enable TDE on owned databases
+
+    .PARAMETER AzureSqlDbNames
+        List of one or more Azure SQL databases for which to enable TDE
 
     .PARAMETER ResourceGroupNames
         List of Resource Groups. Storage accounts in the listed resource groups
@@ -27,77 +30,71 @@
     .NOTES
         Version:        1.0
         Author:         Chris Wallen
-        Creation Date:  04/30/2020
+        Creation Date:  05/11/2020
 #>
 
 Param
 (
-    #[parameter(mandatory)]
+    [parameter(mandatory)]
     [string]
-    $AzureSubscriptionId = 'd8abb5fd-9d00-48fd-862a-0f778306cce7',
+    $AzureSubscriptionId,
 
-    #[parameter(mandatory)]
+    [parameter(mandatory)]
     [string]
-    $AzureEnvironment = 'AzureUSGovernment',
+    $AzureEnvironment,
 
     [string[]]
-    $SqlServerNames,
+    $AzureSqlServerNames,
 
     [string[]]
-    $SqlDbNames,
+    $AzureSqlDbNames,
 
     [string[]]
     $ResourceGroupNames
 )
 
-Clear-Variable -Name SqlServerNames
-Clear-Variable -Name SqlDBNames
-Clear-Variable -Name ResourceGroupNames
-Clear-Variable -Name azSqlDatabases
-
-$SqlServerNames = "prodsqlserver"
-
-$ResourceGroupNames = "dynatrace-poc"
-
-$SqlDbNames = 'proddb', 'master'
-
 $azSqlServers = @()
 $azSqlDatabases = @()
 
-if ($SqlDbNames)
-{    
+if ($AzureSqlDbNames)
+{
     $dbResource = @()
-    foreach ($database in $SqlDbNames)
+    foreach ($database in $AzureSqlDbNames)
     {
-        $dbResource += Get-AzResource -ResourceType 'Microsoft.Sql/servers/databases' | where { $_.Name -match "$database" }
+        if ($database -notlike '*master')
+        {
+            Write-Output "Collecting database: $($database)"
+            $dbResource += Get-AzResource -ResourceType 'Microsoft.Sql/servers/databases' | where { $_.Name -match "$database" }
 
-        if ($dbResource.Count -lt 1)
-        {
-            Write-Error -Message "Failed to find $database"
-        }
-        elseif ($dbResource.Count -gt 1)
-        {
-            Write-Error -Message "Found multiple databases with the name $database. Unable to configure TDE"
-        }
-        else
-        {
-            foreach($resource in $dbResource)
+            #Check to make sure we found a database and there aren't any duplicates
+            if ($dbResource.Count -lt 1)
             {
-                $azSqlDatabases += Get-AzSqlDatabase -ServerName $server -ResourceGroupName $azSqlServers[-1].ResourceGroupName
+                Write-Error -Message "Failed to find $database"
             }
-            
+            elseif ($dbResource.Count -gt 1)
+            {
+                Write-Error -Message "Found multiple databases with the name $database. Unable to configure TDE"
+            }
+            else
+            {
+                foreach ($resource in $dbResource)
+                {
+                    $azSqlDatabases += Get-AzSqlDatabase -ServerName $server -ResourceGroupName $azSqlServers[-1].ResourceGroupName
+                }
+
+            }
         }
     }
 }
-elseif ($SqlServerNames -and -not $SqlDbNames)
+elseif ($AzureSqlServerNames -and -not $AzureSqlDbNames)
 {
-    foreach ($server in $SqlServerNames)
+    foreach ($server in $AzureSqlServerNames)
     {
         $azSqlServers += Get-AzResource -ResourceType 'Microsoft.Sql/servers' -Name $server
         $azSqlDatabases += Get-AzSqlDatabase -ServerName $server -ResourceGroupName $azSqlServers[-1].ResourceGroupName
     }
 }
-elseif (($ResourceGroupNames) -and -not $SqlServernames -and -not $SqlDBNames)
+elseif ($ResourceGroupNames -and -not $AzureSqlServerNames -and -not $AzureSqlDbNames)
 {
     foreach ($resourceGroup in $ResourceGroupNames)
     {
@@ -106,6 +103,7 @@ elseif (($ResourceGroupNames) -and -not $SqlServernames -and -not $SqlDBNames)
 }
 else
 {
+    Write-Output "Collecting all databases"
     $azSqlServers = Get-AzResource -ResourceType 'Microsoft.Sql/servers'
 
     foreach ($sqlServer in $azSqlServers)
@@ -117,7 +115,7 @@ else
 
 foreach ($sqlDatabase in $azSqlDatabases)
 {
-    $tdeEnabledState = (Get-AzSqlDatabaseTransparentDataEncryption -ServerName $sqlDatabase.ServerName -ResourceGroupName $sqlDatabase.ResourceGroupName -DatabaseName $sqlDatabase.DatabaseName).State    
+    $tdeEnabledState = (Get-AzSqlDatabaseTransparentDataEncryption -ServerName $sqlDatabase.ServerName -ResourceGroupName $sqlDatabase.ResourceGroupName -DatabaseName $sqlDatabase.DatabaseName).State
 
     if ($tdeEnabledState -eq 'Disabled')
     {
