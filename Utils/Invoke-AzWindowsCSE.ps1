@@ -1,6 +1,6 @@
 <#
     .SYNOPSIS
-        Run a Custom Script Extension on a list of Linux VMs.
+        Run a Custom Script Extension on a list of Windows VMs.
 
     .NOTES
         - Since only 1 CSE is allowed on a VM at one time, previous existing CSEs found will be removed
