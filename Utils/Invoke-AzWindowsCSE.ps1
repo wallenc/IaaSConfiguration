@@ -16,13 +16,13 @@
         Resource group name of all VMs (All VMs but be in the same RG at this time)
 
     .PARAMETER ScriptFilePath
-        Path to bash script to run. Must end in .sh
+        Path to powershell script to run. Must end in .ps1
 
     .PARAMETER ScriptExtensionName
         Name for the script extension in Azure
 
     .PARAMETER Parameters
-        String array of parameters to pass to bash script when called on target VM
+        String array of parameters to pass to powershell script when called on target VM
 
     .PARAMETER StorageAccountName
         Name of storage account to store CSE script on
