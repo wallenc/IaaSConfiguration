@@ -1,8 +1,8 @@
 variable "azure_subscription_id" {
     type = string
-    description = "Subscription id for the deployment"
-    default = "d8abb5fd-9d00-48fd-862a-0f778306cce7"
+    description = "Subscription id for the deployment"        
 }
+
 variable "azure_region" {
     type = string
     description = "Azure region to use for the deployment"
