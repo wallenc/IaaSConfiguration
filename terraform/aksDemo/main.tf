@@ -12,8 +12,6 @@ terraform {
       container_name       = "tfstate"
       key                  = "demo.terraform.tfstate"
       environment = "usgovernment"
-      subscription_id = "d8abb5fd-9d00-48fd-862a-0f778306cce7"
-      tenant_id = "8a09f2d7-8415-4296-92b2-80bb4666c5fc"
   }
 }
 
