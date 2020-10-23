@@ -93,3 +93,9 @@ variable "subnet_address_range" {
     default = ["172.16.1.0/24"]
 }
 
+variable "container_registry_name" {
+    type = string
+    description = "Name of the container registry to use"
+    default = "demoAksRegistry"
+}
+
