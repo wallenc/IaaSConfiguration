@@ -15,9 +15,9 @@ variable "aks_cluster_name" {
     default = "demoAKS"
 }
 
-variable "aks_resource_group" {
+variable "resource_group_name" {
     type = string
-    description = "The name of the resource group to deploy AKS"
+    description = "The name of the resource group to use"
     default = "demoAKS-RG"
 }
 
@@ -55,12 +55,6 @@ variable "log_analytics_name" {
     type = string
     description = "The name of the log analytics workspace"
     default = "aksDemoLogA"
-}
-
-variable "log_analytics_resource_group" {
-    type = string
-    description = "The name of the resource group for the log analytics workspace"
-    default = "demoAKS-RG"
 }
 
 variable "azure_vnet" {

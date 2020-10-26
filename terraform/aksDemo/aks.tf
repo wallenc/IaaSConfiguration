@@ -1,7 +1,10 @@
 resource "azurerm_kubernetes_cluster" "aks_cluster" {
+  depends_on = [
+    azurerm_virtual_network.aks_vnet
+  ]
   name                = var.aks_cluster_name
   location            = var.azure_region
-  resource_group_name = var.aks_resource_group
+  resource_group_name = var.resource_group_name
   dns_prefix          = var.aks_dns_prefix
 
   default_node_pool {
