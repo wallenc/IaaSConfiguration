@@ -16,6 +16,18 @@
 
     .PARAMETER LogAnalyticsResourceGroupName
     The resource group where the log analytics workspace lives
+
+    .NOTES
+    Created on:    10/26/2020
+    Created by:    Chris Wallen (wallenc)    
+
+    .EXAMPLE
+    Set-AzAppInsights.ps1 -AzureSubscriptionId b64fdddd-9d0f-46d5-adf5-b90b03afe02c `
+            -AppInsightsWorkspaceName "demoAppInsights" `
+            -AppInsightsResourceGroupName "demoAppInsights-Resource-Group" `
+            -LogAnalyticsWorkspaceName "demoLogAnalyticsWorkspace" `
+            -LogAnalyticsResourceGroupName "demoLogAnalytics-Resource-Group"
+    
 #>
 
 
