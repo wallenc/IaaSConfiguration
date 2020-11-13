@@ -4,9 +4,9 @@ provider "azurerm" {
   skip_provider_registration = "true"  
 }
 
-terraform {
-    backend "azurerm" {
-      
+terraform {    
+    backend "local" {
+        path = "../State/demoAKS-RG.tfstate"
     }
 }
 
