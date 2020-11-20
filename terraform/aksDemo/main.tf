@@ -9,9 +9,3 @@ terraform {
         path = "../State/aksDemo.tfstate"
     }
 }
-
-data "azurerm_subscription" "primary" {
-}
-
-data "azurerm_client_config" "example" {
-}

@@ -5,11 +5,7 @@ resource "azurerm_application_insights" "main" {
   application_type    = "java"  
 }
 
-resource "null_resource" "set_appinsights" {
-  depends_on = [
-    azurerm_application_insights.main,
-    azurerm_log_analytics_workspace.main
-  ]
+resource "null_resource" "set_appinsights" {  
   provisioner "local-exec" {
     interpreter = ["Powershell", "-Command"]
     command = <<ps
@@ -21,12 +17,8 @@ resource "null_resource" "set_appinsights" {
       -LogAnalyticsResourceGroupName ${azurerm_log_analytics_workspace.main.resource_group_name}
   ps
     }
-}
-
-output "instrumentation_key" {
-  value = azurerm_application_insights.main.instrumentation_key
-}
-
-output "app_id" {
-  value = azurerm_application_insights.main.app_id
+    depends_on = [
+      azurerm_application_insights.main,
+      azurerm_log_analytics_workspace.main
+  ]
 }

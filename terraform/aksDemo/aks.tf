@@ -1,8 +1,8 @@
-resource "azurerm_kubernetes_cluster" "aks_cluster" {
+resource "azurerm_kubernetes_cluster" "main" {
   depends_on = [
     azurerm_virtual_network.aks_vnet
   ]
-  name                = var.aks_cluster_name
+  name                = var.main_name
   location            = var.azure_region
   resource_group_name = var.resource_group_name
   dns_prefix          = var.aks_dns_prefix
@@ -35,13 +35,13 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
 }
 
 output "client_certificate" {
-  value = azurerm_kubernetes_cluster.aks_cluster.kube_config.0.client_certificate
+  value = azurerm_kubernetes_cluster.main.kube_config.0.client_certificate
 }
 
 output "kube_config" {
-  value = azurerm_kubernetes_cluster.aks_cluster.kube_config_raw
+  value = azurerm_kubernetes_cluster.main.kube_config_raw
 }
 
 output "k8s_identity" {
-  value = azurerm_kubernetes_cluster.aks_cluster.identity
+  value = azurerm_kubernetes_cluster.main.identity
 }

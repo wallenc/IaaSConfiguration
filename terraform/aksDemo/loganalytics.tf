@@ -5,10 +5,7 @@ resource "azurerm_log_analytics_workspace" "main" {
     sku                 =   "PerGB2018"
 }
 
-resource "azurerm_log_analytics_solution" "container_insights" {
-    depends_on = [
-        azurerm_log_analytics_workspace.main
-    ]
+resource "azurerm_log_analytics_solution" "container_insights" {    
     solution_name         = "ContainerInsights"
     location              = azurerm_log_analytics_workspace.main.location
     resource_group_name   = azurerm_log_analytics_workspace.main.resource_group_name
@@ -19,4 +16,7 @@ resource "azurerm_log_analytics_solution" "container_insights" {
         publisher = "Microsoft"
         product   = "OMSGallery/ContainerInsights"
     }
+    depends_on = [
+        azurerm_log_analytics_workspace.main
+    ]
 }
