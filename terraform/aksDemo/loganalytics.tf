@@ -1,8 +1,8 @@
 resource "azurerm_log_analytics_workspace" "main" {    
-    name                =  var.log_analytics_name
-    location            = "usgovvirginia"
-    resource_group_name =  var.resource_group_name
-    sku                 = "PerGB2018"
+    name                =   var.log_analytics_name
+    location            =   var.azure_region
+    resource_group_name =   var.resource_group_name
+    sku                 =   "PerGB2018"
 }
 
 resource "azurerm_log_analytics_solution" "container_insights" {

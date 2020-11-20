@@ -16,7 +16,7 @@ resource "azurerm_kubernetes_cluster" "aks_cluster" {
 
   network_profile {
       network_plugin = "azure"
-      load_balancer_sku = "Basic"
+      load_balancer_sku = "Standard"
   }
 
   identity {

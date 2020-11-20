@@ -5,8 +5,8 @@ provider "azurerm" {
 }
 
 terraform {
-    backend "azurerm" {
-      
+    backend "local" {
+        path = "../State/aksDemo.tfstate"
     }
 }
 
