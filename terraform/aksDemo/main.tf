@@ -4,14 +4,7 @@ provider "azurerm" {
   skip_provider_registration = "true"  
 }
 
-terraform {    
+terraform {
     backend "local" {
-        path = "../State/demoAKS-RG.tfstate"
-    }
-}
-
-data "azurerm_subscription" "primary" {
-}
-
-data "azurerm_client_config" "example" {
+        path = "../State/aksDemo.tfstate"
 }
