@@ -9,17 +9,23 @@ variable "azure_region" {
     default = "usgovvirginia"
 }
 
+variable "app_gateway_name" {
+    type = string
+    description = "The name of the application gateway"
+    default = "aks-demo-appgw"
+}
+
 variable "aks_cluster_name" {
     type = string
     description = "Name of the AKS cluster resource"
     default = "demoAKS"
 }
 
-variable "resource_group_name" {
-    type = string
-    description = "The name of the resource group to use"
-    default = "demoAKS-RG"
-}
+# variable "resource_group_name" {
+#     type = string
+#     description = "The name of the resource group to use"
+#     default = "AKS-DEMO-SOUTH"
+# }
 
 variable "aks_node_pool_name" {
     type = string
@@ -42,7 +48,7 @@ variable "aks_node_size" {
 variable "aks_node_resource_group" {
     type = string
     description = "Name of the resource group to create for the nodes. This RG must not currently exist"
-    default = "AKS-NODE-RG"
+    default = "DEMOAKS-NODE-RG"
 }
 
 variable "aks_dns_prefix" {
@@ -54,13 +60,13 @@ variable "aks_dns_prefix" {
 variable "log_analytics_name" {
     type = string
     description = "The name of the log analytics workspace"
-    default = "aksDemoLogA"
+    default = "demoAksLogA"
 }
 
 variable "azure_vnet" {
     type = string
     description = "The name of the virtual network that contains the azure_subnet resource"
-    default = "aksVnet"
+    default = "demoAksVnet"
 }
 
 variable "azure_vnet_resource_group" {
@@ -72,19 +78,31 @@ variable "azure_vnet_resource_group" {
 variable "azure_vnet_address_range" {
     type = list(string)
     description = "The address space for the azure virtual network"
-    default = ["172.16.0.0/16"]
+    default = ["10.4.0.0/16"]
 }
 
-variable "azure_subnet" {
+variable "aks_subnet" {
     type = string
     description = "The name of the subnet to use for the AKS nodes and pods"
-    default = "aksSubnet"
+    default = "aks-subnet"
 }
 
-variable "subnet_address_range" {
+variable "appgw_subnet" {
+    type = string
+    description = "The name of the subnet to use for the AKS nodes and pods"
+    default = "appgw-subnet"
+}
+
+variable "aks_subnet_address_range" {
     type = list(string)
     description = "The address space of the azure_subnet resource"
-    default = ["172.16.1.0/24"]
+    default = ["10.4.0.0/25"]
+}
+
+variable "appgw_subnet_address_range" {
+    type = list(string)
+    description = "The address space of the azure_subnet resource"
+    default = ["10.4.1.0/27"]
 }
 
 variable "container_registry_name" {
