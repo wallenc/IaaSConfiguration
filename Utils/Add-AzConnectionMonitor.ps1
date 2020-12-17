@@ -47,6 +47,79 @@ Param(
     $monitorPort
 )
 
+# Function to add net watcher extension
+function Add-AzNetworkWatcherExtension
+{
+    Param (
+
+        [parameter(mandatory)]
+        [Object]
+        $VirtualMachine
+    )
+
+    $vmStatus = (Get-AzVM `
+            -ResourceGroupName $VirtualMachine.ResourceGroupName `
+            -Name $VirtualMachine.Name `
+            -Status).Statuses.DisplayStatus[-1]
+
+    # Ensure VM is running. If it's not, we won't
+    # be able to tell if the network watcher extension is installed
+    if ($vmStatus -eq 'VM running')
+    {
+        if ($VirtualMachine.StorageProfile.OsDisk.OsType -eq 'Windows')
+        {
+            $extensions = Get-AzVMExtension `
+                -ResourceGroupName $VirtualMachine.ResourceGroupName `
+                -VMName $VirtualMachine.Name | where { $_.ExtensionType -eq 'NetworkWatcherAgentWindows' } `
+                -ErrorAction SilentlyContinue
+
+            #Make sure the extension is not already installed before attempting to install it
+            if (!($extensions))
+            {
+                Write-Output "Network watcher extension not installed on $($VirtualMachine.Name)"
+
+                Write-Output "Adding the extension"
+                $null = Set-AzVMExtension `
+                    -ExtensionName "AzureNetworkWatcherExtension" `
+                    -ResourceGroupName $VirtualMachine.ResourceGroupName `
+                    -VMName $VirtualMachine.Name `
+                    -Publisher "Microsoft.Azure.NetworkWatcher" `
+                    -ExtensionType "NetworkWatcherAgentWindows" `
+                    -TypeHandlerVersion 1.4 `
+                    -Location $VirtualMachine.Location
+            }
+        }
+        elseif ($VirtualMachine.StorageProfile.OsDisk.OsType -eq 'Linux')
+        {
+            # Make sure the extension is not already installed before attempting to install it
+            $extensions = Get-AzVMExtension `
+                -ResourceGroupName $VirtualMachine.ResourceGroupName `
+                -VMName $VirtualMachine.Name | where { $_.ExtensionType -eq 'NetworkWatcherAgentLinux' } `
+                -ErrorAction SilentlyContinue
+
+            if (!($extensions))
+            {
+                Write-Output "Network watcher extension not installed on $($VirtualMachine.Name)"
+
+                Write-Output "Adding the extension"
+
+                $null = Set-AzVMExtension `
+                    -ExtensionName "NetworkWatcherAgentLinux" `
+                    -ResourceGroupName $VirtualMachine.ResourceGroupName `
+                    -VMName $VirtualMachine.Name `
+                    -Publisher "Microsoft.Azure.NetworkWatcher" `
+                    -ExtensionType "NetworkWatcherAgentLinux" `
+                    -TypeHandlerVersion 1.4 `
+                    -Location $VirtualMachine.Location
+            }
+        }
+    }
+    else
+    {
+        Write-Warning -Message "Skipping VM as it is not currently powered on"
+    }
+}
+
 # Check to make sure Az module is installed as script depends on it
 if (!(Get-InstalledModule -Name Az))
 {
@@ -59,67 +132,18 @@ $null = Set-AzContext -Subscription $sourceVmSubscriptionID
 $sourceVms = @()
 
 #Loop through source VM list to build array of VM objects
-foreach ($vmName in $sourceVmNames)
+foreach ($sourceVmName in $sourceVmNames)
 {
-    $vm = Get-AzVM -Name $vmName
-
-    if ($null -ne $vm)
+    $sourceVm = Get-AzVM -Name $sourceVmName
+    Write-Output "Checking for Network Watcher extension on $($sourceVm.Name)"
+    if ($null -ne $sourceVm)
     {
-        $vmStatus = (Get-AzVM -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name -Status).Statuses.DisplayStatus[-1]
-
-        #Ensure VM is running. If it's not, we won't be able to tell if the network watcher extension is installed
-        if ($vmStatus -eq 'VM running')
-        {
-            if ($vm.StorageProfile.OsDisk.OsType -eq 'Windows')
-            {
-                $extensions = Get-AzVMExtension -ResourceGroupName $vm.ResourceGroupName `
-                    -VMName $vm.Name -Name 'AzureNetworkWatcherExtension' -ErrorAction SilentlyContinue
-
-                #Make sure the extension is not already installed before attempting to install it
-                if (-not $extensions)
-                {
-                    Write-Output "Starting to add network watcher extension to $($vm.Name)"
-                    Set-AzVMExtension `
-                        -ExtensionName "AzureNetworkWatcherExtension" `
-                        -ResourceGroupName $vm.ResourceGroupName `
-                        -VMName $vm.Name `
-                        -Publisher "Microsoft.Azure.NetworkWatcher" `
-                        -ExtensionType "NetworkWatcherAgentWindows" `
-                        -TypeHandlerVersion 1.4 `
-                        -Location $vm.Location
-                }
-            }
-            elseif ($vm.StorageProfile.OsDisk.OsType -eq 'Linux')
-            {
-                $extensions = Get-AzVMExtension -ResourceGroupName $vm.ResourceGroupName `
-                    -VMName $vm.Name -Name 'NetworkWatcherAgentLinux' -ErrorAction SilentlyContinue
-
-                #Make sure the extension is not already installed before attempting to install it
-                if (-not $extensions)
-                {
-                    Write-Output "Starting to add network watcher extension to $($vm.Name)"
-
-                    Set-AzVMExtension `
-                        -ExtensionName "NetworkWatcherAgentLinux" `
-                        -ResourceGroupName $vm.ResourceGroupName `
-                        -VMName $vm.Name `
-                        -Publisher "Microsoft.Azure.NetworkWatcher" `
-                        -ExtensionType "NetworkWatcherAgentLinux" `
-                        -TypeHandlerVersion 1.4 `
-                        -Location $vm.Location
-                }
-            }
-
-            $sourceVms += $vm
-        }
-        else
-        {
-            Write-Warning -Message "Skipping VM as it is not currently powered on"
-        }
+        Add-AzNetworkWatcherExtension -VirtualMachine $sourceVm
+        $sourceVms += $sourceVm
     }
     else
     {
-        Write-Warning "Unable to find VM $vmName in subscription $($azContext.SubscriptionName)"
+        Write-Warning "Unable to find VM $sourceVmName in subscription $($azContext.SubscriptionName)"
     }
 }
 
@@ -131,64 +155,19 @@ $destinationVms = @{}
 foreach ($destinationVMName in $destinationVMNames)
 {
     $destinationVm = Get-AzVM -Name $destinationVMName
-    
-    if ($null -ne $destinationVM)
-    {    
-        $destinationVmNicResource = Get-AzResource -Id $destinationVM.NetworkProfile.NetworkInterfaces.Id
 
-        $destinationVmIp = (Get-AzNetworkInterface -ResourceGroupName $destinationVmNicResource.ResourceGroupName `
+    if ($null -ne $destinationVM)
+    {
+        $destinationVmNicResource = Get-AzResource `
+            -Id $destinationVM.NetworkProfile.NetworkInterfaces.Id
+
+        $destinationVmIp = (Get-AzNetworkInterface `
+                -ResourceGroupName $destinationVmNicResource.ResourceGroupName `
                 -Name $destinationVmNicResource.Name).IpConfigurations.PrivateIpAddress
 
         $destinationVms.Add($destinationVm.Name, $destinationVmIp)
 
-        $vmStatus = (Get-AzVM -ResourceGroupName $destinationVm.ResourceGroupName -Name $destinationVm.Name -Status).Statuses.DisplayStatus[-1]
-
-        if ($vmStatus -eq 'VM running')
-        {
-            if ($destinationVm.StorageProfile.OsDisk.OsType -eq 'Windows')
-            {
-                $extensions = Get-AzVMExtension -ResourceGroupName $destinationVm.ResourceGroupName `
-                    -VMName $destinationVm.Name -Name 'AzureNetworkWatcherExtension' -ErrorAction SilentlyContinue
-
-                #Make sure the extension is not already installed before attempting to install it
-                if (-not $extensions)
-                {
-                    Write-Output "Starting to add network watcher extension to $($destinationVm.Name)"
-                    Set-AzVMExtension `
-                        -ExtensionName "AzureNetworkWatcherExtension" `
-                        -ResourceGroupName $destinationVm.ResourceGroupName `
-                        -VMName $destinationVm.Name `
-                        -Publisher "Microsoft.Azure.NetworkWatcher" `
-                        -ExtensionType "NetworkWatcherAgentWindows" `
-                        -TypeHandlerVersion 1.4 `
-                        -Location $destinationVm.Location
-                }
-            }
-            elseif ($destinationVm.StorageProfile.OsDisk.OsType -eq 'Linux')
-            {
-                $extensions = Get-AzVMExtension -ResourceGroupName $destinationVm.ResourceGroupName `
-                    -VMName $destinationVm.Name -Name 'NetworkWatcherAgentLinux' -ErrorAction SilentlyContinue
-
-                #Make sure the extension is not already installed before attempting to install it
-                if (-not $extensions)
-                {
-                    Write-Output "Starting to add network watcher extension to $($destinationVm.Name)"
-
-                    Set-AzVMExtension `
-                        -ExtensionName "NetworkWatcherAgentLinux" `
-                        -ResourceGroupName $destinationVm.ResourceGroupName `
-                        -VMName $destinationVm.Name `
-                        -Publisher "Microsoft.Azure.NetworkWatcher" `
-                        -ExtensionType "NetworkWatcherAgentLinux" `
-                        -TypeHandlerVersion 1.4 `
-                        -Location $destinationVm.Location
-                }
-            }
-        }
-        else
-        {
-            Write-Warning -Message "Skipping VM as it is not currently powered on"
-        }
+        Add-AzNetworkWatcherExtension -VirtualMachine $destinationVM
     }
     else
     {
@@ -200,31 +179,43 @@ foreach ($destinationVMName in $destinationVMNames)
 $azContext = Set-AzContext -Subscription $sourceVmSubscriptionID
 $sourceNw = Get-AzNetworkWatcher -Location $vm.Location
 
-foreach ($sourceVm in $sourceVms)
+foreach ($source in $sourceVms)
 {
-    foreach ($vm in $destinationVms.GetEnumerator())
+    Write-Output "Source VM $($source.Name)"
+    foreach ($destinationVm in $destinationVms.GetEnumerator())
     {
-        $nwExists = Get-AzNetworkWatcherConnectionMonitor -NetworkWatcherName $sourceNw.Name -ResourceGroupName $sourceNw.ResourceGroupName `
-            -Name ($sourceVm.Name + "-" + $vm.Name) -ErrorAction SilentlyContinue
+        Write-Output "Destination VM $($destinationVm.Name)"
+        $nwExists = Get-AzNetworkWatcherConnectionMonitor `
+            -NetworkWatcherName $sourceNw.Name `
+            -ResourceGroupName $sourceNw.ResourceGroupName `
+            -Name ($source.Name + "-" + $destinationVm.Name) `
+            -ErrorAction SilentlyContinue
 
-        if (-not $nwExists)
+        if (!($nwExists))
         {
-            Write-Host "Connection monitor for $($sourceVm.Name + "-" + $vm.Name) does not exist. Creating it" -ForegroundColor Yellow
+            Write-Host "Connection monitor for $($source.Name + "-" + $destinationVm.Name) does not exist. Creating it" -ForegroundColor Yellow
 
-            $null = New-AzNetworkWatcherConnectionMonitor -NetworkWatcher $sourceNw -Name ($sourceVm.Name + "-" + $vm.Name.ToUpper()) `
-                -SourceResourceId $sourceVm.Id -DestinationAddress $vm.Value -DestinationPort $monitorPort
+            $null = New-AzNetworkWatcherConnectionMonitor `
+                -NetworkWatcher $sourceNw `
+                -Name ($source.Name + "-" + $destinationVm.Name) `
+                -SourceResourceId $source.Id `
+                -DestinationAddress $destinationVm.Value `
+                -DestinationPort $monitorPort
 
-            $isStarted = (Get-AzNetworkWatcherConnectionMonitor -NetworkWatcherName $sourceNw.Name -ResourceGroupName $sourceNw.ResourceGroupName `
-                    -Name ($sourceVm.Name + "-" + $vm.Name)).MonitoringStatus
+            $monitorStarted = (Get-AzNetworkWatcherConnectionMonitor `
+                    -NetworkWatcherName $sourceNw.Name `
+                    -ResourceGroupName $sourceNw.ResourceGroupName `
+                    -Name ("$($source.Name) - $($destinationVm.Name)") `
+                    -ErrorAction SilentlyContinue ).MonitoringStatus
 
-            if ($isStarted -eq 'NotStarted')
+            if ($monitorStarted -eq 'NotStarted')
             {
                 $null = Start-AzNetworkWatcherConnectionMonitor `
                     -NetworkWatcherName $sourceNw.Name `
                     -ResourceGroupName $sourceNw.ResourceGroupName `
-                    -Name ($sourceVm.Name + "-" + $vm.Name.ToUpper())
-                
-                Write-Output "Started connection monitor $($source.Name + "-" + $vm.Name)"
+                    -Name ($source.Name + "-" + $destinationVm.Name)
+
+                Write-Output "Started connection monitor $($source.Name + "-" + $destinationVm.Name)"
             }
         }
         else
