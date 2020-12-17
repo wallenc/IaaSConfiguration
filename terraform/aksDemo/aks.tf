@@ -46,3 +46,31 @@ output "kube_config" {
 output "k8s_identity" {
   value = azurerm_kubernetes_cluster.main.identity
 }
+
+output "client_key" {
+    value = azurerm_kubernetes_cluster.main.kube_config.0.client_key
+}
+
+output "cluster_ca_certificate" {
+    value = azurerm_kubernetes_cluster.main.kube_config.0.cluster_ca_certificate
+}
+
+output "cluster_username" {
+    value = azurerm_kubernetes_cluster.main.kube_config.0.username
+}
+
+output "cluster_password" {
+    value = azurerm_kubernetes_cluster.main.kube_config.0.password
+}
+
+output "host" {
+    value = azurerm_kubernetes_cluster.main.kube_config.0.host
+}
+
+output "identity_resource_id" {
+    value = azurerm_user_assigned_identity.main.id
+}
+
+output "identity_client_id" {
+    value = azurerm_user_assigned_identity.main.client_id
+}
