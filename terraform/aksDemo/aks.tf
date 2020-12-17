@@ -1,17 +1,14 @@
 resource "azurerm_kubernetes_cluster" "main" {
-  depends_on = [
-    azurerm_virtual_network.aks_vnet
-  ]
-  name                = var.main_name
+  name                = var.aks_cluster_name
   location            = var.azure_region
-  resource_group_name = var.resource_group_name
+  resource_group_name = azurerm_resource_group.rg.name
   dns_prefix          = var.aks_dns_prefix
 
   default_node_pool {
     name       = var.aks_node_pool_name
     node_count = var.aks_node_count
     vm_size    = var.aks_node_size
-    vnet_subnet_id = azurerm_subnet.aks_subnet.id    
+    vnet_subnet_id = azurerm_subnet.aks_subnet.id
   }
 
   network_profile {
@@ -25,13 +22,17 @@ resource "azurerm_kubernetes_cluster" "main" {
 
     addon_profile {
         oms_agent {
-          enabled                    = true        
+          enabled                    = true
           log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
         }
         kube_dashboard {
-              enabled = false        
-        }        
-    }         
+              enabled = false
+        }
+    }
+
+  depends_on = [
+    azurerm_virtual_network.main
+  ]
 }
 
 output "client_certificate" {
