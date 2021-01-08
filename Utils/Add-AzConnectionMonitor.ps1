@@ -23,7 +23,6 @@
         Author:         Chris Wallen
         Creation Date:  06/22/2020
 #>
-
 Param(
 
     [parameter(mandatory)]
@@ -46,6 +45,12 @@ Param(
     [int]
     $monitorPort
 )
+
+$sourceVmSubscriptionID = "d8abb5fd-9d00-48fd-862a-0f778306cce7"
+$destinationVmsSubscriptionID = "d8abb5fd-9d00-48fd-862a-0f778306cce7"
+$sourceVmNames = "ansibledemo", "aksdemo"
+$destinationVmNames = "azdevopssvr", "azcontosodc"
+$monitorPort = 53
 
 # Function to add net watcher extension
 function Add-AzNetworkWatcherExtension
@@ -120,16 +125,8 @@ function Add-AzNetworkWatcherExtension
     }
 }
 
-<<<<<<< HEAD
 # Make sure Az module is installed as script depends on it
 Import-Module -Name Az -ErrorAction Stop
-=======
-# Check to make sure Az module is installed as script depends on it
-if (!(Get-InstalledModule -Name Az))
-{
-    throw "Azure Az powershell module is not installed. Please install and try again."
-}
->>>>>>> master
 
 #Set context to source VM subscription
 $null = Set-AzContext -Subscription $sourceVmSubscriptionID
@@ -166,34 +163,27 @@ foreach ($destinationVMName in $destinationVMNames)
         $destinationVmNicResource = Get-AzResource `
             -Id $destinationVM.NetworkProfile.NetworkInterfaces.Id
 
-        $destinationVmIp = (Get-AzNetworkInterface `
-                -ResourceGroupName $destinationVmNicResource.ResourceGroupName `
-<<<<<<< HEAD
-                -Name $destinationVmNicResource.Name).IpConfigurations.PrivateIpAddress | where { $_.IpConfigurations.Primary -eq 'True' }
-=======
-                -Name $destinationVmNicResource.Name).IpConfigurations.PrivateIpAddress
->>>>>>> master
+        $primaryNic = Get-AzNetworkInterface `
+            -ResourceGroupName $destinationVmNicResource.ResourceGroupName `
+            -Name $destinationVmNicResource.Name | where { $_.IpConfigurations.Primary -eq $true }        
 
-        $destinationVms.Add($destinationVm.Name, $destinationVmIp)
+        $destinationVms.Add($destinationVm.Name, $primaryNic.IpConfigurations.PrivateIpAddress)
 
         Add-AzNetworkWatcherExtension -VirtualMachine $destinationVM
     }
     else
     {
-<<<<<<< HEAD
         Write-Warning "Unable to find VM $destinationVMName in subscription $($azContext.SubscriptionName)"
-=======
-        Write-Warning "Unable to find VM $destinationVMNamein subscription $($azContext.SubscriptionName)"
->>>>>>> master
     }
 }
 
 #Set context back to source VM
 $azContext = Set-AzContext -Subscription $sourceVmSubscriptionID
-$sourceNw = Get-AzNetworkWatcher -Location $vm.Location
 
 foreach ($source in $sourceVms)
 {
+    $sourceNw = Get-AzNetworkWatcher -Location $source.Location
+
     Write-Output "Source VM $($source.Name)"
     foreach ($destinationVm in $destinationVms.GetEnumerator())
     {
@@ -206,11 +196,7 @@ foreach ($source in $sourceVms)
 
         if (!($nwExists))
         {
-<<<<<<< HEAD
             Write-Warning "Connection monitor for $($source.Name + "-" + $destinationVm.Name) does not exist. Creating it"
-=======
-            Write-Host "Connection monitor for $($source.Name + "-" + $destinationVm.Name) does not exist. Creating it" -ForegroundColor Yellow
->>>>>>> master
 
             $null = New-AzNetworkWatcherConnectionMonitor `
                 -NetworkWatcher $sourceNw `
@@ -218,34 +204,14 @@ foreach ($source in $sourceVms)
                 -SourceResourceId $source.Id `
                 -DestinationAddress $destinationVm.Value `
                 -DestinationPort $monitorPort
-<<<<<<< HEAD
-=======
-
-            $monitorStarted = (Get-AzNetworkWatcherConnectionMonitor `
-                    -NetworkWatcherName $sourceNw.Name `
-                    -ResourceGroupName $sourceNw.ResourceGroupName `
-                    -Name ("$($source.Name) - $($destinationVm.Name)") `
-                    -ErrorAction SilentlyContinue ).MonitoringStatus
-
-            if ($monitorStarted -eq 'NotStarted')
-            {
-                $null = Start-AzNetworkWatcherConnectionMonitor `
-                    -NetworkWatcherName $sourceNw.Name `
-                    -ResourceGroupName $sourceNw.ResourceGroupName `
-                    -Name ($source.Name + "-" + $destinationVm.Name)
-
-                Write-Output "Started connection monitor $($source.Name + "-" + $destinationVm.Name)"
-            }
->>>>>>> master
-        }
-        else
+        } else
         {
             Write-Warning "Connection monitor $($nwExists.Name) already exists"
         }
         $monitorStarted = (Get-AzNetworkWatcherConnectionMonitor `
                 -NetworkWatcherName $sourceNw.Name `
                 -ResourceGroupName $sourceNw.ResourceGroupName `
-                -Name ("$($source.Name) - $($destinationVm.Name)") `
+                -Name ("$($source.Name)-$($destinationVm.Name)") `
                 -ErrorAction SilentlyContinue ).MonitoringStatus
 
         if ($monitorStarted -eq 'NotStarted')
@@ -258,9 +224,4 @@ foreach ($source in $sourceVms)
             Write-Output "Started connection monitor $($source.Name + "-" + $destinationVm.Name)"
         }
     }
-<<<<<<< HEAD
-
 }
-=======
-}
->>>>>>> master
