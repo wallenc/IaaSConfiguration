@@ -1,5 +1,5 @@
 #cloud-config
-hostname: vac21rhelci3
+hostname: rhelVM01
 write_files:
   - owner: root:root
     path: /tmp/ImageConfig.sh
