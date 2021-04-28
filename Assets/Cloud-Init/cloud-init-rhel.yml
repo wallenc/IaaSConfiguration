@@ -1,0 +1,42 @@
+#cloud-config
+hostname: vac21rhelci3
+write_files:
+  - owner: root:root
+    path: /tmp/ImageConfig.sh
+    permissions: '0744'
+    content: |
+      #!/usr/bin/bash
+      yum makecache fast
+      yum install -t -y aide
+      yum install -t -y open-vm-tools
+
+      /sbin/aide --init -B 'database_out=file:/var/lib/aide/aide3.db.gz'
+
+      cat << EOF > /etc/cron.d/aide-check
+      # /etc/cron.d/aide-check
+      ## Check database of 0515 each day
+      ## modified by:rlj on 4/15/19
+      15 5 * * * /usr/sbin/aide > /opt/admin/aide_checks/aide_out_20180221.txt
+      EOF
+
+      cat << EOF >> /etc/aide.conf
+      All = p+i+n+u+g+s+m+S+sha512+acl+xattrs
+      EOF
+
+      cat << EOF >> /etc/yum.conf
+      exclude=kernel* redhat-release*
+      EOF
+      
+      awk '$1=="'/dev/mapper/rootvg-rootlv'"{$5=1;$6=1}1' /etc/fstab > /tmp/fstabtsttmp && mv /tmp/fstabtsttmp /etc/fstab
+      awk '$2=="'/opt'"{$4="defaults,nodev";$5=1;$6=2}1' /etc/fstab > /tmp/fstabtsttmp && mv /tmp/fstabtsttmp /etc/fstab
+      awk '$2=="'/home'"{$4="defaults,nodev";$5=1;$6=2}1' /etc/fstab > /tmp/fstabtsttmp && mv /tmp/fstabtsttmp /etc/fstab
+      awk '$2=="'/tmp'"{$4="defaults,nodev,nosuid,noexec";$5=1;$6=2}1' /etc/fstab > /tmp/fstabtsttmp && mv /tmp/fstabtsttmp /etc/fstab
+      awk '$2=="'/var'"{$4="defaults,nodev";$5=1;$6=2}1' /etc/fstab > /tmp/fstabtsttmp && mv /tmp/fstabtsttmp /etc/fstab
+
+      systemctl stop firewalld
+      systemctl disable firewalld
+
+      yum update
+
+runcmd:
+  - [ bash, /tmp/ImageConfig.sh  ]
