@@ -35,27 +35,27 @@
 #>
 Param
 (
-    #[parameter(mandatory)]
+    [parameter(mandatory)]
     [string]
-    $azureSubscriptionID = 'd8abb5fd-9d00-48fd-862a-0f778306cce7',
+    $azureSubscriptionID,
 
-    #[parameter(mandatory)]
+    [parameter(mandatory)]
     [string]
-    $azureEnvironment = 'AzureUSGovernment',
+    $azureEnvironment,
 
-    #[parameter(mandatory)]
+    [parameter(mandatory)]
     [string]
-    $WorkspaceName = 'PROD-LA',
+    $WorkspaceName,
 
-    #[parameter(mandatory)]
+    [parameter(mandatory)]
     [string]
-    $LAResourceGroup = 'LA-AA',
+    $LAResourceGroup,
 
     [string[]]
     $ResourceGroupNames,
 
     [string[]]
-    $VMNames = 'devbox'
+    $VMNames
 )
 
 function Set-AzureConnection
@@ -155,90 +155,67 @@ $ProtectedSettings = @{"workspaceKey" = $key }
 
 #Loop through each VM in the array and deploy the extension
 foreach ($vm in $vms)
-{
-  <#  Start-Job -ArgumentList $azContext, $vm, $workspace, $key, $PublicSettings, $ProtectedSettings -ScriptBlock {
+{  
+    $vmStatus = (Get-AzVM -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name -Status).Statuses.DisplayStatus[-1]
 
-        Param
-        (
-            $azContext,
-            $vm,
-            $workspace,
-            $key,
-            $PublicSettings,
-            $ProtectedSettings
-        )
-#>
-        $vmStatus = (Get-AzVM -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name -Status).Statuses.DisplayStatus[-1]
+    Write-Output "Processing VM: $($vm.Name)"
 
-        Write-Output "Processing VM: $($vm.Name)"
-
-        if ($vmStatus -ne 'VM running')
-        {
-            Write-Warning -Message "Skipping VM as it is not currently powered on"
-        }
-
-        #Check to see if Linux or Windows
-        if ($vm.StorageProfile.OsDisk.OsType -eq 'Windows')
-        {
-            $extensions = Get-AzVMExtension -ResourceGroupName $vm.ResourceGroupName -VMName $vm.Name -Name 'Microsoft.EnterpriseCloud.Monitoring' -ErrorAction SilentlyContinue
-            #Make sure the extension is not already installed before attempting to install it
-            if (-not $extensions)
-            {
-                Write-Output "Adding MicrosoftMonitoringAgent extension to VM: $($vm.Name)"
-                $result = Set-AzVMExtension -ExtensionName "Microsoft.EnterpriseCloud.Monitoring" `
-                    -ResourceGroupName $vm.ResourceGroupName `
-                    -VMName $vm.Name `
-                    -Publisher "Microsoft.EnterpriseCloud.Monitoring" `
-                    -ExtensionType "MicrosoftMonitoringAgent" `
-                    -TypeHandlerVersion 1.0 `
-                    -Settings $PublicSettings `
-                    -ProtectedSettings $ProtectedSettings `
-                    -Location $vm.Location
-            }
-            else
-            {
-                Write-Output "Skipping VM - Extension already installed"
-            }
-        }
-        elseif ($vm.StorageProfile.OsDisk.OsType -eq 'Linux')
-        {
-            $extensions = Get-AzVMExtension -ResourceGroupName $vm.ResourceGroupName -VMName $vm.Name -Name 'OmsAgentForLinux' -ErrorAction SilentlyContinue
-
-            if($extensions)
-            {
-                Write-Output "Extensions found"
-                Write-Output "================"
-
-                Write-Output $extensions.name
-            }
-            #Make sure the extension is not already installed before attempting to install it
-            if (-not $extensions)
-            {
-                Write-Output "Adding OmsAgentForLinux extension to VM: $($vm.Name)"
-                $result = Set-AzVMExtension -ExtensionName "OmsAgentForLinux" `
-                    -ResourceGroupName $vm.ResourceGroupName `
-                    -VMName $vm.Name `
-                    -Publisher "Microsoft.EnterpriseCloud.Monitoring" `
-                    -ExtensionType "OmsAgentForLinux" `
-                    -Settings $PublicSettings `
-                    -ProtectedSettings $ProtectedSettings `
-                    -Location $vm.Location `
-                    -TypeHandlerVersion 1.0                    
-            }
-            else
-            {
-                Write-Output "Skipping VM - Extension already installed"
-            }
-        }
-    }
-#}
-
-$runningJobs = Get-Job -State Running
-While ($runningJobs.Count -gt 0)
-{
-    foreach ($job in $runningJobs)
+    if ($vmStatus -ne 'VM running')
     {
-        Receive-Job $job.Id
+        Write-Warning -Message "Skipping VM as it is not currently powered on"
     }
-    $runningJobs = Get-Job -State Running
+
+    #Check to see if Linux or Windows
+    if ($vm.StorageProfile.OsDisk.OsType -eq 'Windows')
+    {
+        $extensions = Get-AzVMExtension -ResourceGroupName $vm.ResourceGroupName -VMName $vm.Name -Name 'Microsoft.EnterpriseCloud.Monitoring' -ErrorAction SilentlyContinue
+        #Make sure the extension is not already installed before attempting to install it
+        if (-not $extensions)
+        {
+            Write-Output "Adding MicrosoftMonitoringAgent extension to VM: $($vm.Name)"
+            $null = Set-AzVMExtension -ExtensionName "Microsoft.EnterpriseCloud.Monitoring" `
+                -ResourceGroupName $vm.ResourceGroupName `
+                -VMName $vm.Name `
+                -Publisher "Microsoft.EnterpriseCloud.Monitoring" `
+                -ExtensionType "MicrosoftMonitoringAgent" `
+                -TypeHandlerVersion 1.0 `
+                -Settings $PublicSettings `
+                -ProtectedSettings $ProtectedSettings `
+                -Location $vm.Location
+        }
+        else
+        {
+            Write-Output "Skipping VM - Extension already installed"
+        }
+    }
+    elseif ($vm.StorageProfile.OsDisk.OsType -eq 'Linux')
+    {
+        $extensions = Get-AzVMExtension -ResourceGroupName $vm.ResourceGroupName -VMName $vm.Name -Name 'OmsAgentForLinux' -ErrorAction SilentlyContinue
+
+        if ($extensions)
+        {
+            Write-Output "Extensions found"
+            Write-Output "================"
+
+            Write-Output $extensions.name
+        }
+        #Make sure the extension is not already installed before attempting to install it
+        if (-not $extensions)
+        {
+            Write-Output "Adding OmsAgentForLinux extension to VM: $($vm.Name)"
+            $null = Set-AzVMExtension -ExtensionName "OmsAgentForLinux" `
+                -ResourceGroupName $vm.ResourceGroupName `
+                -VMName $vm.Name `
+                -Publisher "Microsoft.EnterpriseCloud.Monitoring" `
+                -ExtensionType "OmsAgentForLinux" `
+                -Settings $PublicSettings `
+                -ProtectedSettings $ProtectedSettings `
+                -Location $vm.Location `
+                -TypeHandlerVersion 1.0                    
+        }
+        else
+        {
+            Write-Output "Skipping VM - Extension already installed"
+        }
+    }
 }
